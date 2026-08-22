@@ -1,4 +1,4 @@
-import { defaultState, type RecoveryState } from "@/types/recovery";
+import { defaultState, type RecoveryState } from "../types/recovery.ts";
 
 export function normalizeState(input: Partial<RecoveryState> | null | undefined): RecoveryState {
   const fallback = defaultState();
@@ -11,6 +11,7 @@ export function normalizeState(input: Partial<RecoveryState> | null | undefined)
     urges: input?.urges ?? [],
     relapses: input?.relapses ?? [],
     journalEntries: input?.journalEntries ?? [],
+    deletedJournalEntryIds: input?.deletedJournalEntryIds ?? [],
     goals: input?.goals ?? fallback.goals,
     challenges: input?.challenges ?? fallback.challenges,
     achievements: input?.achievements ?? [],

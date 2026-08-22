@@ -13,25 +13,25 @@ export default function RootLayout() {
 function RouteGate() {
   const router = useRouter();
   const pathname = usePathname();
-  const { userEmail, configured, loading } = useAuth();
+  const { userId, configured, loading } = useAuth();
   const { hydrated, state } = useRecovery();
   const isAuthRoute = pathname === "/auth";
   const isOnboardingRoute = pathname === "/onboarding";
 
   useEffect(() => {
     if (loading || !hydrated) return;
-    if (configured && !userEmail && !isAuthRoute) {
+    if (configured && !userId && !isAuthRoute) {
       router.replace("/auth");
       return;
     }
-    if (configured && userEmail && !state.profile.onboardingComplete && !isOnboardingRoute) {
+    if (configured && userId && !state.profile.onboardingComplete && !isOnboardingRoute) {
       router.replace("/onboarding");
       return;
     }
     if (!configured && !state.profile.onboardingComplete && !isOnboardingRoute && !isAuthRoute) {
       router.replace("/onboarding");
     }
-  }, [configured, hydrated, isAuthRoute, isOnboardingRoute, loading, pathname, router, state.profile.onboardingComplete, userEmail]);
+  }, [configured, hydrated, isAuthRoute, isOnboardingRoute, loading, pathname, router, state.profile.onboardingComplete, userId]);
 
   if (loading || !hydrated) return <View style={styles.loading}><ActivityIndicator color={colors.accent} /></View>;
   return null;

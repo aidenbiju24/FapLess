@@ -77,8 +77,11 @@ export function RecoveryProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<RecoveryState>(() => defaultState());
   const [hydrated, setHydrated] = useState(false);
   const skipNextPersistence = useRef(false);
+  const cloudSyncEnabled = useRef(true);
+  const cloudSyncQueue = useRef(Promise.resolve());
 
   useEffect(() => {
+    cloudSyncEnabled.current = true;
     let active = true;
     const hydrationReset = setTimeout(() => setHydrated(false), 0);
     loadState(scope).then(async (stored) => {
@@ -98,7 +101,13 @@ export function RecoveryProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!hydrated) return;
     if (skipNextPersistence.current) { skipNextPersistence.current = false; return; }
-    void saveState(state, scope).then(() => pushCloudState(state)).catch(() => undefined);
+    const persistCloud = cloudSyncEnabled.current;
+    void saveState(state, scope).then(() => {
+      if (!persistCloud) return;
+      cloudSyncQueue.current = cloudSyncQueue.current
+        .then(() => pushCloudState(state))
+        .catch(() => undefined);
+    }).catch(() => undefined);
   }, [state, hydrated, scope]);
 
   const update = (next: RecoveryState) => setState({ ...next, achievements: earnedAchievements(next) });
@@ -139,23 +148,43 @@ export function RecoveryProvider({ children }: PropsWithChildren) {
         const relapse: Relapse = { id: createId("relapse"), ...input, occurredAt, createdAt: nowIso };
         const duration = streakDuration(state.streakStartedAt, occurredAt, state.profile.timezone);
         const history = duration > 0 ? [{ id: createId("streak"), startDate: state.streakStartedAt, endDate: occurredAt, duration, resetReason: input.trigger, createdAt: nowIso }, ...state.streakHistory] : state.streakHistory;
-        update({ ...state, relapses: [relapse, ...state.relapses], streakHistory: history, streakStartedAt: occurredAt });
+        const nextStreakStartedAt = occurredAt > state.streakStartedAt ? occurredAt : state.streakStartedAt;
+        update({ ...state, relapses: [relapse, ...state.relapses], streakHistory: history, streakStartedAt: nextStreakStartedAt });
       },
       addJournal: (input) => {
         const nowIso = new Date().toISOString();
         const entry: JournalEntry = { id: createId("journal"), ...input, createdAt: nowIso, updatedAt: nowIso };
         update({ ...state, journalEntries: [entry, ...state.journalEntries] });
       },
-      deleteJournal: (id) => update({ ...state, journalEntries: state.journalEntries.filter((entry) => entry.id !== id) }),
+      deleteJournal: (id) => update({ ...state, journalEntries: state.journalEntries.filter((entry) => entry.id !== id), deletedJournalEntryIds: Array.from(new Set([...state.deletedJournalEntryIds, id])) }),
       addGoal: (input) => update({ ...state, goals: [{ id: createId("goal"), ...input, current: 0, status: "active", createdAt: new Date().toISOString() }, ...state.goals] }),
       incrementGoal: (id) => update({ ...state, goals: state.goals.map((goal) => goal.id === id ? { ...goal, current: Math.min(goal.target, goal.current + 1), status: goal.current + 1 >= goal.target ? "completed" : goal.status } : goal) }),
       completeChallenge: (id) => update({ ...state, challenges: state.challenges.map((challenge) => challenge.id === id ? { ...challenge, progress: 100, status: "completed" } : challenge) }),
       addChallenge: (input) => update({ ...state, challenges: [{ id: createId("challenge"), ...input, status: "active", progress: 0, createdAt: new Date().toISOString() }, ...state.challenges] }),
       updateProfile: (displayName, goalDays) => update({ ...state, profile: { ...state.profile, displayName: displayName.trim() || "there", goalDays: Math.max(1, goalDays) } }),
       exportData: () => JSON.stringify({ ...state, exportedAt: new Date().toISOString(), exportVersion: 1 }, null, 2),
-      resetLocalData: async () => { await clearState(scope); skipNextPersistence.current = true; setState(defaultState()); },
+      resetLocalData: async () => {
+        await cloudSyncQueue.current;
+        await clearState(scope);
+        if (userId) {
+          try {
+            const cloudState = await pullCloudState(defaultState());
+            cloudSyncEnabled.current = true;
+            skipNextPersistence.current = true;
+            setState(cloudState);
+          } catch {
+            cloudSyncEnabled.current = false;
+            skipNextPersistence.current = true;
+            setState(defaultState());
+          }
+        } else {
+          cloudSyncEnabled.current = false;
+          skipNextPersistence.current = true;
+          setState(defaultState());
+        }
+      },
     };
-  }, [state, hydrated, scope]);
+  }, [state, hydrated, scope, userId]);
 
   return <RecoveryContext.Provider value={value}>{children}</RecoveryContext.Provider>;
 }

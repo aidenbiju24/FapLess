@@ -2,11 +2,22 @@ import type { CheckIn, RecoveryState, StreakRecord, Urge } from "../types/recove
 
 const DAY = 86400000;
 
+function safeTimeZone(timeZone?: string): string | undefined {
+  if (!timeZone) return undefined;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format();
+    return timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
 function calendarDay(value: string | Date, timeZone?: string): string {
-  if (typeof value === "string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const date = typeof value === "string" ? new Date(value) : value;
-  if (timeZone) {
-    const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const validTimeZone = safeTimeZone(timeZone);
+  if (validTimeZone) {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: validTimeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
     const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
     return `${values.year}-${values.month}-${values.day}`;
   }
@@ -55,7 +66,7 @@ export function urgeStats(urges: Urge[], timeZone?: string) {
   }, {});
   const topTrigger = Object.entries(triggerCounts).sort((a, b) => b[1] - a[1])[0];
   const hourCounts = urges.reduce<Record<number, number>>((counts, urge) => {
-    const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", hour12: false }).format(new Date(urge.occurredAt)));
+    const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: safeTimeZone(timeZone), hour: "2-digit", hour12: false }).format(new Date(urge.occurredAt)));
     counts[hour] = (counts[hour] || 0) + 1;
     return counts;
   }, {});
@@ -97,11 +108,16 @@ export function recoveryPhase(streak: number): { name: string; range: string; fo
   return { name: "Maintenance", range: "90+ days", focus: "Sustainable habits and preventing complacency" };
 }
 
-export function formatDate(isoDate: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(isoDate));
+export function formatDate(isoDate: string, timeZone?: string): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(isoDate);
+  const validTimeZone = safeTimeZone(timeZone);
+  const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric", ...(dateOnly ? { timeZone: "UTC" } : validTimeZone ? { timeZone: validTimeZone } : {}) };
+  return new Intl.DateTimeFormat(undefined, options).format(dateOnly ? new Date(`${isoDate}T00:00:00Z`) : new Date(isoDate));
 }
 
 export function createId(_prefix: string): string {
+  const cryptoObject = typeof globalThis.crypto !== "undefined" ? globalThis.crypto : null;
+  if (cryptoObject?.randomUUID) return cryptoObject.randomUUID();
   const bytes = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
@@ -111,4 +127,31 @@ export function createId(_prefix: string): string {
 
 export function localDateNow(timeZone?: string): string {
   return calendarDay(new Date(), timeZone);
+}
+
+export function dateInTimeZone(value: string | Date, timeZone?: string): string {
+  return calendarDay(value, timeZone);
+}
+
+export function addCalendarDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+export function currentCalendarMonth(timeZone?: string, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: safeTimeZone(timeZone), year: "numeric", month: "numeric", day: "numeric" }).formatToParts(now);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const today = Number(values.day);
+  const firstDate = new Date(Date.UTC(year, month - 1, 1));
+  const lastDate = new Date(Date.UTC(year, month, 0));
+  return {
+    year,
+    month,
+    today,
+    firstDay: firstDate.getUTCDay(),
+    days: lastDate.getUTCDate(),
+    label: new Intl.DateTimeFormat(undefined, { timeZone: "UTC", month: "long", year: "numeric" }).format(firstDate),
+  };
 }

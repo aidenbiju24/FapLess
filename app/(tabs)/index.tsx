@@ -2,23 +2,23 @@ import { Link, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Body, Button, Card, Container, Eyebrow, Heading, Screen, Stat } from "@/components/ui";
 import { useRecovery } from "@/context/RecoveryContext";
-import { formatDate } from "@/lib/recovery";
+import { formatDate, localDateNow } from "@/lib/recovery";
 import { colors, spacing } from "@/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { state, streak, longest, score, phase, stats } = useRecovery();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateNow(state.profile.timezone);
   const checkIn = state.checkIns.find((item) => item.date === today);
   const checkInProgress = Math.min(100, state.checkIns.length ? Math.round((state.checkIns.length / Math.max(1, streak)) * 100) : 0);
   const isWide = width >= 820;
 
   return <Screen><Container>
-    <View style={styles.header}><View><Eyebrow>Recovery / {formatDate(new Date().toISOString())}</Eyebrow><Heading size="medium">Good to see you, {state.profile.displayName}.</Heading><Body muted>Your streak is one measurement. Your progress is the bigger picture.</Body></View><View style={styles.avatar}><Text style={styles.avatarText}>{state.profile.displayName.slice(0, 1).toUpperCase()}</Text></View></View>
+    <View style={styles.header}><View><Eyebrow>Recovery / {formatDate(new Date().toISOString(), state.profile.timezone)}</Eyebrow><Heading size="medium">Good to see you, {state.profile.displayName}.</Heading><Body muted>Your streak is one measurement. Your progress is the bigger picture.</Body></View><View style={styles.avatar}><Text style={styles.avatarText}>{state.profile.displayName.slice(0, 1).toUpperCase()}</Text></View></View>
     <View style={[styles.grid, isWide && styles.gridWide]}>
       <View style={styles.mainColumn}>
-        <Card style={styles.streakCard}><View style={styles.cardHeader}><View><Eyebrow>Current streak</Eyebrow><Text style={styles.streak}>{streak} <Text style={styles.streakUnit}>days</Text></Text><Body muted>Started {formatDate(state.streakStartedAt)}</Body></View><View style={styles.progressRing}><Text style={styles.ringText}>{score}%</Text><Text style={styles.ringLabel}>progress</Text></View></View><View style={styles.goalRow}><Text style={styles.goalText}>Goal: {state.profile.goalDays} days</Text><View style={styles.goalTrack}><View style={[styles.goalFill, { width: `${Math.min(100, (streak / state.profile.goalDays) * 100)}%` }]} /></View></View><View style={styles.statsRow}><Stat label="Best streak" value={`${longest}d`} /><Stat label="Urges defeated" value={stats.defeated} /><Stat label="Phase" value={phase.name} /></View></Card>
+        <Card style={styles.streakCard}><View style={styles.cardHeader}><View><Eyebrow>Current streak</Eyebrow><Text style={styles.streak}>{streak} <Text style={styles.streakUnit}>days</Text></Text><Body muted>Started {formatDate(state.streakStartedAt, state.profile.timezone)}</Body></View><View style={styles.progressRing}><Text style={styles.ringText}>{score}%</Text><Text style={styles.ringLabel}>progress</Text></View></View><View style={styles.goalRow}><Text style={styles.goalText}>Goal: {state.profile.goalDays} days</Text><View style={styles.goalTrack}><View style={[styles.goalFill, { width: `${Math.min(100, (streak / state.profile.goalDays) * 100)}%` }]} /></View></View><View style={styles.statsRow}><Stat label="Best streak" value={`${longest}d`} /><Stat label="Urges defeated" value={stats.defeated} /><Stat label="Phase" value={phase.name} /></View></Card>
         <View style={[styles.actionRow, isWide && styles.actionRowWide]}><Pressable accessibilityRole="button" onPress={() => router.push("/sos")} style={({ pressed }) => [styles.sosButton, isWide && styles.sosWide, pressed && styles.pressed]}><Text style={styles.sosKicker}>NEED A RESET?</Text><Text style={styles.sosTitle}>I&apos;M HAVING AN URGE</Text><Text style={styles.sosCaption}>Open a guided 90-second response</Text></Pressable><Card style={styles.checkInCard}><Eyebrow>Today&apos;s check-in</Eyebrow><Heading size="small">{checkIn ? "You showed up today." : "How are you arriving today?"}</Heading>{checkIn ? <Body muted>Mood {checkIn.mood}/5 · Urge {checkIn.urgeLevel}/10 · Confidence {checkIn.confidence}/5</Body> : <Body muted>A small check-in creates useful awareness over time.</Body>}<Link href="/check-in" asChild><Button variant="secondary">{checkIn ? "Update check-in" : "Complete check-in"}</Button></Link></Card></View>
       </View>
       <View style={styles.sideColumn}>

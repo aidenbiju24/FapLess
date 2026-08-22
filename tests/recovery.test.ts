@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checkInConsistency, currentStreak, longestStreak, recoveryScore, streakDuration, urgeStats } from "../src/lib/recovery.ts";
+import { addCalendarDays, checkInConsistency, currentCalendarMonth, currentStreak, formatDate, longestStreak, recoveryScore, streakDuration, urgeStats } from "../src/lib/recovery.ts";
+import { normalizeState } from "../src/lib/state.ts";
 import type { RecoveryState } from "../src/types/recovery.ts";
 
 const baseState = (overrides: Partial<RecoveryState> = {}): RecoveryState => ({
@@ -11,6 +12,7 @@ const baseState = (overrides: Partial<RecoveryState> = {}): RecoveryState => ({
   urges: [],
   relapses: [],
   journalEntries: [],
+  deletedJournalEntryIds: [],
   goals: [],
   challenges: [],
   achievements: [],
@@ -35,6 +37,25 @@ test("preserves historical streaks when calculating longest", () => {
 
 test("calculates completed streak duration from calendar dates", () => {
   assert.equal(streakDuration("2026-01-01T23:00:00.000Z", "2026-01-08T01:00:00.000Z", "UTC"), 7);
+});
+
+test("formats date-only records without shifting the displayed day", () => {
+  assert.match(formatDate("2026-01-01", "America/Los_Angeles"), /Jan 1, 2026/);
+});
+
+test("normalizes older local state with the deletion tombstone field", () => {
+  const state = normalizeState({ profile: baseState().profile, streakStartedAt: baseState().streakStartedAt });
+  assert.deepEqual(state.deletedJournalEntryIds, []);
+  assert.equal(state.checkIns.length, 0);
+});
+
+test("adds calendar days without depending on daylight-saving elapsed hours", () => {
+  assert.equal(addCalendarDays("2026-03-08", 1), "2026-03-09");
+});
+
+test("calculates the displayed month in the user's timezone", () => {
+  const calendar = currentCalendarMonth("America/Los_Angeles", new Date("2026-03-01T07:30:00.000Z"));
+  assert.deepEqual({ year: calendar.year, month: calendar.month, today: calendar.today }, { year: 2026, month: 2, today: 28 });
 });
 
 test("returns useful urge analytics without claiming causation", () => {

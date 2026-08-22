@@ -137,6 +137,7 @@ export interface RecoveryState {
   urges: Urge[];
   relapses: Relapse[];
   journalEntries: JournalEntry[];
+  deletedJournalEntryIds: string[];
   goals: Goal[];
   challenges: Challenge[];
   achievements: Achievement[];
@@ -166,6 +167,7 @@ export const defaultState = (): RecoveryState => ({
   urges: [],
   relapses: [],
   journalEntries: [],
+  deletedJournalEntryIds: [],
   goals: [
     {
       id: "00000000-0000-4000-8000-000000000001",

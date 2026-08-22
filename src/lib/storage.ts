@@ -21,6 +21,8 @@ function webStorage(): Storage | null {
   return typeof window !== "undefined" && window.localStorage ? window.localStorage : null;
 }
 
+let storageQueue = Promise.resolve();
+
 export async function loadState(scope = "demo-user"): Promise<RecoveryState | null> {
   const key = storageKey(scope);
   try {
@@ -38,15 +40,25 @@ export async function loadState(scope = "demo-user"): Promise<RecoveryState | nu
 
 export async function saveState(state: RecoveryState, scope = "demo-user"): Promise<void> {
   const serialized = JSON.stringify(state);
-  try {
-    webStorage()?.setItem(storageKey(scope), serialized);
-    await AsyncStorage.setItem(storageKey(scope), serialized);
-  } catch {
-    // Local persistence is best effort; the UI remains usable if storage is unavailable.
-  }
+  storageQueue = storageQueue.then(async () => {
+    try {
+      webStorage()?.setItem(storageKey(scope), serialized);
+      await AsyncStorage.setItem(storageKey(scope), serialized);
+    } catch {
+      // Local persistence is best effort; the UI remains usable if storage is unavailable.
+    }
+  });
+  await storageQueue;
 }
 
 export async function clearState(scope = "demo-user"): Promise<void> {
-  webStorage()?.removeItem(storageKey(scope));
-  await AsyncStorage.removeItem(storageKey(scope));
+  storageQueue = storageQueue.then(async () => {
+    try {
+      webStorage()?.removeItem(storageKey(scope));
+      await AsyncStorage.removeItem(storageKey(scope));
+    } catch {
+      // Clearing is best effort when a platform storage provider is unavailable.
+    }
+  });
+  await storageQueue;
 }

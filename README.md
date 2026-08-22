@@ -13,7 +13,7 @@ A private, calm recovery and self-control platform for web and iOS, built with E
 - Progress analytics for streaks, urges, trigger frequency, risk time, recovery score, milestones, goals, and challenges.
 - Email/password auth interface with Supabase Auth when configured, plus local demo mode for UI development.
 - Local-first persistence through AsyncStorage and browser localStorage, with authenticated Supabase pull/upsert reconciliation when configured.
-- Supabase migration with normalized tables, constraints, indexes, ownership RLS, and profile creation trigger.
+- Supabase migrations with normalized tables, constraints, indexes, ownership RLS, profile creation trigger, cross-table ownership checks, active-streak sync, and journal deletion markers.
 - Authenticated `ai-chat` and `ai-analysis` Edge Functions with minimized context, safety gate, configurable routing, timeout, and fallback behavior.
 - Authenticated `delete-account` Edge Function using the server-only service role and database cascades.
 - JSON export and local data reset controls.
@@ -36,7 +36,7 @@ Only the Supabase URL and publishable key are client configuration. Never put a 
 
 ## Supabase
 
-The project reference is `qrjgeuygfvlmgetlppta`. Migrations live at `supabase/migrations/001_initial_schema.sql` and `supabase/migrations/002_onboarding_and_recovery_progress.sql`.
+The project reference is `qrjgeuygfvlmgetlppta`. Migrations live in `supabase/migrations/001_initial_schema.sql` through `005_journal_deletion_sync.sql`; apply all migrations in order with the Supabase CLI.
 
 With the Supabase CLI authenticated:
 
@@ -92,6 +92,6 @@ npx expo export --platform web
 
 ## Privacy and limitations
 
-There is no invasive analytics or advertising. Local-first records are stored on-device; when a user is authenticated and Supabase is configured, core records reconcile through RLS-protected upserts. Background offline queue reconciliation, push notifications, accountability sharing, content blocking, widgets, and AI conversation persistence remain deployment-stage extensions because they require platform permissions and external service configuration. Permanent account deletion is implemented as a server-side function and requires deploying it with Supabase's managed service-role secret.
+There is no invasive analytics or advertising. Local-first records are stored on-device; when a user is authenticated and Supabase is configured, core records reconcile through serialized local writes, authenticated RLS-protected upserts, and journal deletion markers. Background offline queue reconciliation, push notifications, accountability sharing, content blocking, widgets, and AI conversation persistence remain deployment-stage extensions because they require platform permissions and external service configuration. Permanent account deletion is implemented as a server-side function and requires deploying it with Supabase's managed service-role secret.
 
 This application is not medical or emergency care. For immediate danger or crisis, contact local emergency services or a qualified professional.
