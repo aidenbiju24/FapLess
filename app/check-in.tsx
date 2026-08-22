@@ -1,0 +1,18 @@
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { Button, Card, Chip, Container, Eyebrow, Field, Heading, Screen, Body } from "@/components/ui";
+import { useRecovery } from "@/context/RecoveryContext";
+import { colors, spacing } from "@/theme";
+import { TRIGGERS, type Mood, type Trigger } from "@/types/recovery";
+
+export default function CheckInScreen() {
+  const router = useRouter(); const { addCheckIn } = useRecovery();
+  const [mood, setMood] = useState<Mood>(3); const [energy, setEnergy] = useState<Mood>(3); const [confidence, setConfidence] = useState<Mood>(3); const [urgeLevel, setUrgeLevel] = useState("0"); const [sleep, setSleep] = useState(""); const [wins, setWins] = useState(""); const [difficulties, setDifficulties] = useState(""); const [notes, setNotes] = useState(""); const [triggers, setTriggers] = useState<Trigger[]>([]);
+  const toggleTrigger = (trigger: Trigger) => setTriggers((current) => current.includes(trigger) ? current.filter((item) => item !== trigger) : [...current, trigger]);
+  const submit = () => { const urge = Number(urgeLevel); const sleepHours = sleep ? Number(sleep) : undefined; if (!Number.isInteger(urge) || urge < 0 || urge > 10 || (sleepHours !== undefined && (sleepHours < 0 || sleepHours > 24))) { Alert.alert("Check your values", "Urge level must be 0-10 and sleep must be between 0-24 hours."); return; } addCheckIn({ mood, energy, confidence, urgeLevel: urge, sleepHours, wins: wins.trim(), difficulties: difficulties.trim(), notes: notes.trim(), triggers }); router.back(); };
+  return <Screen><Container><View style={styles.top}><Eyebrow>Daily practice</Eyebrow><Heading>How are you arriving today?</Heading><Body muted>A quick, honest snapshot helps you notice what supports you.</Body></View><Card><Scale label="Mood" value={mood} onChange={setMood} /><Scale label="Energy" value={energy} onChange={setEnergy} /><Scale label="Confidence" value={confidence} onChange={setConfidence} /><Field label="Urge level (0-10)" value={urgeLevel} onChangeText={setUrgeLevel} keyboardType="number-pad" /><Field label="Sleep hours (optional)" value={sleep} onChangeText={setSleep} keyboardType="decimal-pad" /><Text style={styles.label}>What signals are present?</Text><View style={styles.chips}>{TRIGGERS.map((trigger) => <Chip key={trigger} selected={triggers.includes(trigger)} onPress={() => toggleTrigger(trigger)}>{trigger}</Chip>)}</View><Field label="A win (optional)" value={wins} onChangeText={setWins} placeholder="What went a little better?" /><Field label="A difficulty (optional)" value={difficulties} onChangeText={setDifficulties} placeholder="What felt hard?" /><Field label="Notes (optional)" value={notes} onChangeText={setNotes} multiline numberOfLines={4} style={styles.textArea} /><Button onPress={submit}>Save check-in</Button><Button onPress={() => router.back()} variant="ghost">Cancel</Button></Card></Container></Screen>;
+}
+
+function Scale({ label, value, onChange }: { label: string; value: Mood; onChange: (value: Mood) => void }) { return <View style={styles.scale}><Text style={styles.label}>{label}</Text><View style={styles.scaleRow}>{([1, 2, 3, 4, 5] as Mood[]).map((item) => <Chip key={item} selected={value === item} onPress={() => onChange(item)}>{item}</Chip>)}</View></View>; }
+const styles = StyleSheet.create({ top: { marginBottom: spacing.lg }, scale: { marginBottom: spacing.md }, scaleRow: { flexDirection: "row" }, label: { color: colors.muted, fontSize: 13, fontWeight: "600", marginBottom: spacing.sm }, chips: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.md }, textArea: { height: 110, paddingTop: spacing.md, textAlignVertical: "top" } });

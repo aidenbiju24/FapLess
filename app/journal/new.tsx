@@ -1,0 +1,10 @@
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { Button, Card, Chip, Container, Eyebrow, Field, Heading, Screen } from "@/components/ui";
+import { useRecovery } from "@/context/RecoveryContext";
+import { colors, spacing } from "@/theme";
+import type { Mood } from "@/types/recovery";
+
+export default function NewJournalScreen() { const router = useRouter(); const { addJournal } = useRecovery(); const [title, setTitle] = useState(""); const [content, setContent] = useState(""); const [tagText, setTagText] = useState(""); const [mood, setMood] = useState<Mood | undefined>(); const submit = () => { if (!title.trim() || !content.trim()) { Alert.alert("Add a title and note", "Your entry needs a little content before it can be saved."); return; } addJournal({ title: title.trim(), content: content.trim(), mood, tags: tagText.split(",").map((tag) => tag.trim()).filter(Boolean) }); router.back(); }; return <Screen><Container><Eyebrow>Private journal</Eyebrow><Heading>Write it down.</Heading><Card><Field label="Title" placeholder="What is on your mind?" value={title} onChangeText={setTitle} /><Text style={styles.label}>Mood (optional)</Text><View style={styles.row}>{([1, 2, 3, 4, 5] as Mood[]).map((item) => <Chip key={item} selected={mood === item} onPress={() => setMood(item)}>{item}</Chip>)}</View><Field label="Entry" placeholder="Write without judging the first draft..." value={content} onChangeText={setContent} multiline numberOfLines={9} style={styles.textArea} /><Field label="Tags" placeholder="e.g. evening, progress, stress" value={tagText} onChangeText={setTagText} /><Button onPress={submit}>Save entry</Button><Button variant="ghost" onPress={() => router.back()}>Cancel</Button></Card></Container></Screen>; }
+const styles = StyleSheet.create({ label: { color: colors.muted, fontSize: 13, fontWeight: "600", marginBottom: spacing.sm }, row: { flexDirection: "row", marginBottom: spacing.md }, textArea: { height: 190, paddingTop: spacing.md, textAlignVertical: "top" } });

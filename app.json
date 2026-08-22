@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "FapLess",
+    "slug": "FapLess",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "fapless",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#101412"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+        "backgroundColor": "#101412"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
